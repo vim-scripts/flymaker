@@ -1,0 +1,230 @@
+*flymaker.txt*	For Vim version 7.0	Last change: 2012 February 8
+*flymaker*	Another GNU Flymake-like plugin for Vim.
+
+============================================================================
+CONTENTS                                                 *flymaker-contents*
+
+    1.Introduction................................|flymaker-introduction|
+    2.Requirements................................|flymaker-requirements|
+    3.Installation................................|flymaker-install|
+    4.Configuration...............................|flymaker-config|
+    5.Support.....................................|flymaker-support|
+    6.Known Issues................................|flymaker-issues|
+    7.Changelog...................................|flymaker-changelog|
+
+============================================================================
+1. Introduction                                      *flymaker-introduction*
+
+GNU Flymake allows Emacs users to perform compilation, static analysis, and
+other tools in the background as they develop.  Upon each save, a
+background process is kicked off to perform the checking.  If errors are
+identified, the lines containing the error are highlighted and a tooltip
+provides the error message.  This is very well-suited to feature development
+where the developer spends a lot of time in a single buffer.
+
+I can see the value in this fast-paced workflow but I don't use Emacs.
+There have been a few attempts to bring this functionality to Vim but each
+of them seem to have their pros and cons.  This plugin attempts to overcome
+them.
+
+I don't expect that this is a comprehensive list of alternatives but there
+are 3 worth mentioning here:
+
+    1) vim-flymake
+
+    This plugin just has too many limitations.
+
+    First, it attempts to copy your files into a temporary directory and
+    build them there.  This not only sounds unessisarily ineffient but it
+    also imposes restrictions on interdependancies in your codebase.  For
+    example, my Makefile had an include directive with a relative path
+    which breaks when you move it somewhere else.  Maybe that's a bad
+    practice on my part but I'll be damned if a Vim plugin is going to tell
+    me how to structure my code!
+
+    Another limitation was that the error format was painful to get right,
+    particularly if you wanted to support multiple formats.  I have already
+    spent enough time working on an appropriate &errorformat used by the
+    quickfix list--why not just use that?!.
+
+    2) pylint.vim
+
+    I'll admit that I didn't even try it out.  I did, however, take a good
+    look at the plugin.  This one is more configurable but still not
+    generic enough to be "all purpose."  This one also only uses the
+    quickfix list to report errors.
+
+    3) AsyncCommand
+
+    If there ever was a plugin that I found inspiring, this is it.  The
+    AsyncMake command that this plugin provides is configurable via makeprg
+    and uses the quickfix list to report errors.  If you want to also
+    support using the quickfix list-approach for some workflows, I
+    recommend installing this plugin and adding something like this
+    in your ftplugin/cpp directory:
+
+    if has("autocmd")
+        autocmd BufWritePost <buffer> :AsyncMake
+    endif
+
+    In this example, AsyncMake will be kicked off after saving a cpp file.
+    You're free to configure a different makeprg and set it up for any
+    filetype.  If there are errors, the quickfix list will be displayed.
+
+    The drawbacks with this plugin are that it does not support the
+    flymake-like line highlighting and error balloons.  Initially, I wanted
+    to require AsyncCommand and extend it to provide this capability but I
+    ran into a few issues that has basically led me to clone a few key
+    functions in order to get the job done.  I will attempt to work with
+    the author of AsyncCommand to get the appropriate hooks (and bug fixes)
+    incorporated such that this plugin can simply use its API.  Or perhaps
+    we can merge plugins?
+
+So, what I have done is wrote this plugin using those three examples for
+ideas, inspiration, and even some implementation.  The plugin uses the
+quickfix list but leaves it hidden unless the user explicitly opens it.
+The erroneous lines are highlighted in the Error highlight group and in
+GUI sessions balloons are toggled on when there are errors being displayed.
+They're toggled back off on clean builds because the balloons are rather
+slow.
+
+Of course, this plugin has its shortcommings as well.  See the Known Issues
+section for a list of TODO work-items.
+
+I wanted a catchy name--something that is immediately recognized as a
+flymake-like plugin but something that differentiates it from the other
+alternatives.  FlyMaker is all I could come up with.  Meh.
+
+See the Installation and Configuration sections about installing and configuring Flymaker!
+
+============================================================================
+2. Requirements                                      *flymaker-requirements*
+
+This plugin requires Vim 7.0+, compiled with the |+autocmd|,
+|+balloon_eval|, and |+clientserver|| options.  Check your vim version with
+|:version|.
+
+Although not required for flymake-like functionality, I recommend installing
+the AsyncCommand plugin to support quickfix list-based workflows.  And, of
+course, I hope that you always use pathogen.vim!
+
+============================================================================
+3. Installation                                           *flymaker-install*
+
+Extract the tarball into your ~/.vim directory or, if you are using
+pathogen.vim, a ~/.vim/bundle/flymaker directory.
+
+Note that by default, an ftplugin for C++ will be enabled.  It likely needs
+configured to meet your specific needs.
+
+============================================================================
+4. Configuration                                           *flymaker-config*
+
+In the plugin's ftplugin/cpp directory, you'll find a flymaker.vim file
+that configures the autocmd for the cpp filetype.  It should look something
+like this:
+
+    " blah blah blah read this doc first :P
+
+    "setlocal makeprg=make
+    if has("autocmd")
+    " Uses quickfix list notifications (Requires AsyncCommand 3.1)
+    "    autocmd BufWritePost <buffer> :AsyncMake
+    " Uses flymake-like notifications
+        autocmd BufWritePost <buffer> :AsyncFlyMake
+    endif
+
+In order to enable this for a different filetype, you can copy this file
+into an appropriate ftplugin filetype directory.  You will likely need to
+update the local makeprg for this, as well.
+
+Let's say that we want to use gcc on C files.  Here our makeprg is going to
+be gcc but we also have to add the filename as a parameter.
+
+To do this I've created my ~/.vim/bundle/flymaker/ftplugin/c/flymaker.vim
+as follows:
+
+    setlocal makeprg=gcc
+    if has("autocmd")
+    " Uses flymake-like notifications
+        autocmd BufWritePost <buffer> :AsyncFlyMake %
+    endif
+
+This will invoke "gcc FILENAME.c" in the background and report the errors,
+which should already be parsible via the default &errorformat.
+
+When an error shows up, you may open the quickfix list via |:copen| to
+see any additional context not covered in the tooltip.  If the quickfix
+list does not parse your compilers messages appropriately, you need to
+update your &errorformat.
+
+If you know there are errors but they do not becoming highlighted
+automatically, it is likely that your &errorformat is inadequate.  The
+plugin relies on a line number being identified via the &errorformat, and
+the balloons contain the message text.  See :help errorformat for more
+information.
+
+Note that makeprg can be anything.  It does not have to be a compiler!  The
+possibilities are virtually endless, as long as the command provides output
+in a format that can be parsed by the &errorformat.  For example, you could
+even wrap multiple commands (compile, lint, etc.) in a shell script and
+use the output of all of them!
+
+============================================================================
+5. Support                                                *flymaker-support*
+
+Feel free to send questions, comments, suggestions, concerns, patches, bug
+reports, success stories, funny stories, and dirty jokes to me, Chad Moore,
+via my contact information published on vim.org:
+
+http://www.vim.org/account/profile.php?user_id=19160
+
+============================================================================
+6. Known Issues                                            *flymaker-issues*
+
+This plugin, particularly the initial version, does have a number of
+limitations.  I wanted to get it out here in the public domain sooner rather
+than later.
+
+Here are some of the current TODOs:
+
+* With errors highlighted, navigating to a different buffer does not clear
+  the previous matches.
+
+* Time needs spent on testing/fixing the implications of having multiple
+  buffers open during the build.  Specifically, as of the initial release,
+  you have to be in the same buffer as an error for it to be highlighted.
+  I think it can be done smarter.
+
+* In GUI Vim, something is causing GTK errors to be dumped into the
+  terminal from which it was invoked:
+
+  ** (gvim:10353): WARNING **: Unable to register window with path
+  '/com/canonical/menu/4200024': Timeout was reached
+
+  (gvim:10500): Gtk-WARNING **: unable to find signal handler for
+  object(GtkDrawingArea:0x8ce2998) with func(0x81dbb00) and data(0x8fc3e18)
+
+* A way to toggle flymake mode on and off is desirable.
+
+* The balloonexpr function is terribly slow.  I think we can speed this
+  up by collecting the data as we iterate the quickfix list to perform
+  highlighting.  Perhaps creating a dict here would provide faster lookup
+  for specific error messages.
+
+* The script contains a lot of (slightly modified) AsyncCommand functions.
+  I need to find a better strategy for interoperation.
+
+* I'd like to include more examples than just C++ using the default
+  makeprg.  For example, what about GCC, Clang static analysis, or
+  Pylint?
+
+============================================================================
+7. Changelog                                            *flymaker-changelog*
+
+0.1.0
+    - Initial beta version.
+
+============================================================================
+
+vim:tw=75:ts=8:ft=help

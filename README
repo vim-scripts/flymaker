@@ -1,0 +1,28 @@
+This is a mirror of http://www.vim.org/scripts/script.php?script_id=3924
+
+*** Please drop me an email to report any bugs/issues that you find.  That can
+greatly reduce the time until this thing becomes stable.  See my profile for the
+address.  Thanks! ***
+
+GNU Flymake allows Emacs users to perform compilation, static analysis, and
+other tools in the background as they develop.  Upon each save, a
+background process is kicked off to perform the checking.  If errors are
+identified, the lines containing the error are highlighted and a tooltip
+provides the error message.  This is very well-suited to feature development
+where the developer spends a lot of time in a single buffer.
+
+I can see the value in this fast-paced workflow but I don't use Emacs.
+There have been a few attempts to bring this functionality to Vim but each
+of them seem to have their limitations.  This plugin attempts to overcome
+them.
+
+For more detailed information (including outstanding issues), install and check out:
+
+:help flymaker
+
+Screenshots:
+http://i1177.photobucket.com/albums/x344/seymore15074/Flymaker1.png
+http://i1177.photobucket.com/albums/x344/seymore15074/Flymaker2.png
+
+(BTW, that cool statusline is from pwdstatus.vim!)
+
