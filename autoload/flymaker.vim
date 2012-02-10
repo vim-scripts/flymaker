@@ -1,3 +1,8 @@
+if v:version < 700
+    finish
+endif
+
+
 " Modified AsyncCommand handlers
 
 function! flymaker#flymake(format, title)

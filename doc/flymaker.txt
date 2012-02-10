@@ -106,6 +106,14 @@ This plugin requires Vim 7.0+, compiled with the |+autocmd|,
 |+balloon_eval|, and |+clientserver|| options.  Check your vim version with
 |:version|.
 
+In order to use the client-server feature (that enables background
+compilation), in console Vim, a servername must be specified on the
+command line.  (GUI Vim does this implicitly so it should "just work.")
+What I prefer to do is just set up an alias that appens " --servername VIM"
+like so (example is in bash):
+
+    alias vim='vim --servername VIM'
+
 Although not required for flymake-like functionality, I recommend installing
 the AsyncCommand plugin to support quickfix list-based workflows.  And, of
 course, I hope that you always use pathogen.vim!
@@ -221,18 +229,13 @@ Here are some of the current TODOs:
   you have to be in the same buffer as an error for it to be highlighted.
   I think this can be made smarter.
 
-* Now that errors are highlighted by the erroneous text, after inserting
-  lines causes the highlights to shift, the balloons remain on the
-  original line only.
-
-* The balloonexpr function is terribly slow.  I think we can speed this
-  up by collecting the data as we iterate the quickfix list to perform
-  highlighting.  Perhaps creating a dict here would provide faster lookup
-  for specific error messages.
-
 * I'd like to include more examples than just C++ using the default
   makeprg.  For example, what about GCC, Clang static analysis, or
   Pylint?
+
+* When an error is identified, it's highlighted by the text of the current
+  line that contains the error.  This means that if a duplicate line exists
+  if will also be highlighted and also have a tooltip.
 
 * The script contains a lot of (slightly modified) AsyncCommand functions.
   I need to find a better strategy for interoperation.
@@ -242,6 +245,42 @@ Here are some of the current TODOs:
 
 ============================================================================
 7. Changelog                                            *flymaker-changelog*
+
+0.1.2
+    - FIXED: Undefined variable errors upon sourcing the plugin unless
+             g:FlymakerMenu and g:FlymakerOn were explicitly set by the
+             user.
+
+             If not defined, both options are not explicitly set to their
+             default values when the plugin is sourced.  Internally, the
+             plugin is now safe to assume that they are always set (to
+             something).
+
+    - FIXED: Now that errors are highlighted by the erroneous text, after
+             inserting lines causes the highlights to shift, the balloons
+             remain on the original line only.
+
+    - FIXED: The balloonexpr function is terribly slow.  I think we can
+             speed this up by collecting the data as we iterate the
+             quickfix list to perform highlighting.  Perhaps creating a
+             dict here would provide faster lookup for specific error
+             messages.
+
+             The fix for both of these was to store a dictionary of
+             line text to error message when processing the quickfix list.
+             Now the tooltips are looked (efficiently) up by the text
+             under the cursor rather than by line number.
+
+    - FIXED: Requires Vim 7.2 for matchadd.  The plugin now only uses
+             matchadd if it is available and falls back to using match.
+
+             Version tests were added such that if Vim is < 700, the
+             plugin (silently) does not load.  If the version is < 702,
+             match is used for highlighting.  Otherwise, matchadd is
+             used.
+
+    - Added a blurb to the documentation about specifying a servername on
+      the command line for console Vim.
 
 0.1.1
     - FIXED: When an error is highlighted in the current buffer, inserting

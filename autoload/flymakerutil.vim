@@ -1,3 +1,8 @@
+if v:version < 700
+    finish
+endif
+
+
 " Modified AsyncCommand implementation
 
 if !has('clientserver')

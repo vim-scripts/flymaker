@@ -1,3 +1,7 @@
+if v:version < 700
+    finish
+endif
+
 
 " Please take the time to read through the Configuration
 " section of the documentation to fine tune this gui!

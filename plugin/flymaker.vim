@@ -1,3 +1,17 @@
+if v:version < 700
+    finish
+endif
+
+
+" default configuration (override in your .vimrc)
+if !exists('g:FlymakerOn')
+    " default flymaker to off
+    let g:FlymakerOn = 0
+endif
+if !exists('g:FlymakerMenu')
+    " default the menu to off
+    let g:FlymakerMenu = 0
+endif
 
 
 if g:FlymakerMenu == 1 && has('menu')
@@ -43,24 +57,30 @@ function! s:AsyncFlyMake(target)
 endfunction
 
 
-function! Balloon()
+let s:balloon_dict = {}
 
+
+function! Balloon()
     let msg = ''
-    for item in getqflist()
-        if v:beval_lnum == item.lnum
-            let msg = item.text . "\n\n\":copen\" for more information"
-            break
-        endif
-    endfor
+
+    if has_key( s:balloon_dict, getline(v:beval_lnum) )
+        let msg = s:balloon_dict[getline(v:beval_lnum)]
+    endif
+
     return msg
 endfunction
-if has("balloon_eval")
+if has("gui_running") && has("balloon_eval")
     set balloonexpr=Balloon()
 endif
 
 
 function! Fly()
-    let found_some = 0
+    let found_count = 0
+    if v:version < 702
+        " since matchadd is not available, we must construct a big
+        " long regular expression and make a single call to match.
+        let matchstr = 'match Error /^\('
+    endif
     for item in getqflist()
         if item.lnum != 0
             "TODO - create a dict with bufnr and match expr so that
@@ -68,13 +88,26 @@ function! Fly()
             "       rather than worry about which buffer we're in?
             if bufnr("%") == item.bufnr
 
-                call matchadd('Error',getline(item.lnum))
+                let s:balloon_dict[getline(item.lnum)] = item.text
 
-                let found_some = 1
+                if v:version >= 702
+                    call matchadd('Error',getline(item.lnum))
+                else
+                    if found_count > 0
+                        let matchstr = matchstr . '\|'
+                    endif
+                    let matchstr = matchstr . getline(item.lnum)
+                endif
+
+                let found_count += 1
             endif
         endif
     endfor
-    if found_some == 1
+    if found_count > 0
+        if v:version < 702
+            let matchstr = matchstr . '\)$/'
+            execute matchstr
+        endif
         redraw
         set ballooneval
     else
@@ -85,7 +118,11 @@ endfunction
 
 function s:FlyDone()
     if g:FlymakerOn == 1
-        call clearmatches()
+        if v:version >= 702
+            call clearmatches()
+        else
+            match
+        endif
         redraw
         set noballooneval
     endif
