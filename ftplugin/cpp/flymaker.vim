@@ -7,9 +7,14 @@
 
 "setlocal makeprg=make
 if has("autocmd")
-" Uses quickfix list notifications (Requires AsyncCommand 3.1)
-"    autocmd BufWritePost <buffer> :AsyncMake
-" Uses flymake-like notifications
+
+    " Uses quickfix list notifications (Requires AsyncCommand 3.1)
+    "autocmd BufWritePost <buffer> :AsyncMake
+
+    " Uses flymake-like notifications
     autocmd BufWritePost <buffer> :AsyncFlyMake
+    " Clear highlights after leaving buffer
+    autocmd BufLeave     <buffer> :FlyDone
+
 endif
 

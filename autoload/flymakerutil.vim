@@ -94,8 +94,7 @@ function! flymakerutil#done(temp_file_name)
   unlet s:receivers[a:temp_file_name]
   delete a:temp_file_name
 " TODO: by default 0 is returned (and it was being echoed to the screen!)
-"       Need to investigate if this is the right thing to do or not.  This
-"       may be related to the GTK errors in the terminal when in GUI mode.
+"       Need to investigate if this is the right thing to do or not.
   return ''
 endfunction
 
