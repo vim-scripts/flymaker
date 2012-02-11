@@ -224,10 +224,13 @@ than later.
 
 Here are some of the current TODOs:
 
-* Time needs spent on testing/fixing the implications of having multiple
-  buffers open during the build.  Specifically, as of the initial release,
-  you have to be in the same buffer as an error for it to be highlighted.
-  I think this can be made smarter.
+* If the quickfix list is open, the errors are only highlighted in the
+  buffer if the cursor is in the quickfix list.  If it is left in the
+  buffer that was saved, the quickfix list updates but the highlighting
+  does not appear.
+
+* The plugin needs tested with multiple buffers, multiple tabs, split
+  windows, etc..
 
 * I'd like to include more examples than just C++ using the default
   makeprg.  For example, what about GCC, Clang static analysis, or
@@ -245,6 +248,34 @@ Here are some of the current TODOs:
 
 ============================================================================
 7. Changelog                                            *flymaker-changelog*
+
+0.1.3
+    - FIXED: Time needs spent on testing/fixing the implications of
+             having multiple buffers open during the build.  Specifically,
+             as of the initial release, you have to be in the same buffer
+             as an error for it to be highlighted.  I think this can be
+             made smarter.
+
+             The plugin should now be able to highlight in multiple buffers,
+             although it still needs a lot of testing.  At least one
+             issue still exists when the quickfix list is open and the
+             cursor is not in it.
+
+    - FIXED: Only when the compilation is free of errors does the plugin
+             clear all matches.  As a result, if you fix an error and
+             introduce a different one before recompilation, some of the
+             outdated highlights remain.
+
+             Matches are now cleared before matching new errors.  For Vim
+             versions >= 702, only matches added by the plugin will be
+             cleared.
+
+    - FIXED: Only the last error for a given line is displayed in tooltip
+             when multiple errors are listed for a single line.  It should
+             include them all.
+
+             Additional errors for the same line are now appended to
+             existing tooltips.
 
 0.1.2
     - FIXED: Undefined variable errors upon sourcing the plugin unless

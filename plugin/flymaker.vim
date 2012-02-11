@@ -51,13 +51,14 @@ function! s:AsyncFlyMake(target)
         else
             let title .= a:target
         endif
+
         call flymakerutil#run(make_cmd, flymaker#flymake(&errorformat, title))
 
     endif
 endfunction
 
 
-let s:balloon_dict = {}
+let s:balloon_dict     = {} " current matches in the quickfix
 
 
 function! Balloon()
@@ -75,34 +76,43 @@ endif
 
 
 function! Fly()
+    let s:old_buf = bufnr('%')
     let found_count = 0
     if v:version < 702
         " since matchadd is not available, we must construct a big
         " long regular expression and make a single call to match.
         let matchstr = 'match Error /^\('
     endif
-    for item in getqflist()
+    let qflist = getqflist()
+    call s:FlyClearNoRedraw()
+    for item in qflist
         if item.lnum != 0
-            "TODO - create a dict with bufnr and match expr so that
-            "       we can goto each buffer and highlight matches,
-            "       rather than worry about which buffer we're in?
-            if bufnr("%") == item.bufnr
+            if bufexists(item.bufnr)
+                if bufnr("%") != item.bufnr
+                    call buffer(item.bufnr)
+                endif
 
-                let s:balloon_dict[getline(item.lnum)] = item.text
+                let key = getline( item.lnum )
+                if has_key( s:balloon_dict, key )
+                    let s:balloon_dict[key] = s:balloon_dict[key] . "\n" . item.text
+                else
+                    let s:balloon_dict[key] = item.text
+                endif
 
                 if v:version >= 702
-                    call matchadd('Error',getline(item.lnum))
+                    call matchadd( 'Error', key )
                 else
                     if found_count > 0
                         let matchstr = matchstr . '\|'
                     endif
-                    let matchstr = matchstr . getline(item.lnum)
+                    let matchstr = matchstr . key
                 endif
 
                 let found_count += 1
             endif
         endif
     endfor
+    call buffer(s:old_buf)
     if found_count > 0
         if v:version < 702
             let matchstr = matchstr . '\)$/'
@@ -116,13 +126,23 @@ function! Fly()
 endfunction
 
 
+function s:FlyClearNoRedraw()
+    if v:version >= 702
+        let matches = getmatches()
+        for item in matches
+            if has_key( s:balloon_dict, item['pattern'] )
+                call matchdelete( item['id'] )
+            endif
+        endfor
+        let s:balloon_dict = {}
+    else
+        match
+    endif
+endfunction
+
 function s:FlyDone()
     if g:FlymakerOn == 1
-        if v:version >= 702
-            call clearmatches()
-        else
-            match
-        endif
+        call s:FlyClearNoRedraw()
         redraw
         set noballooneval
     endif
