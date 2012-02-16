@@ -27,10 +27,10 @@ endif
 
 
 function! FlyMakerDone(file)
-  return flymakerutil#done(a:file)
+  return flymaker#done(a:file)
 endfunction
 
-command! -nargs=+ -complete=shellcmd FlyMaker call flymakerutil#run(<q-args>)
+command! -nargs=+ -complete=shellcmd FlyMaker call flymaker#run(<q-args>)
 command! -nargs=* AsyncFlyMake call s:AsyncFlyMake(<q-args>)
 command! -nargs=0 FlyDone call s:FlyDone()
 command! -nargs=0 FlyOn call s:FlyOn()
@@ -52,20 +52,24 @@ function! s:AsyncFlyMake(target)
             let title .= a:target
         endif
 
-        call flymakerutil#run(make_cmd, flymaker#flymake(&errorformat, title))
+        call flymaker#run(make_cmd, flymakehandler#flymake(&errorformat, title))
 
     endif
 endfunction
 
 
-let s:balloon_dict     = {} " current matches in the quickfix
+let s:fly_dict         = {} " buffer to balloon dict association
 
 
 function! Balloon()
     let msg = ''
 
-    if has_key( s:balloon_dict, getline(v:beval_lnum) )
-        let msg = s:balloon_dict[getline(v:beval_lnum)]
+    if has_key( s:fly_dict, v:beval_bufnr )
+        let balloon_dict = s:fly_dict[v:beval_bufnr]
+        let current_line_text = getbufline(v:beval_bufnr, v:beval_lnum)[0]
+        if has_key( balloon_dict, current_line_text )
+            let msg = balloon_dict[current_line_text]
+        endif
     endif
 
     return msg
@@ -76,46 +80,53 @@ endif
 
 
 function! Fly()
-    let s:old_buf = bufnr('%')
+
     let found_count = 0
     if v:version < 702
         " since matchadd is not available, we must construct a big
         " long regular expression and make a single call to match.
-        let matchstr = 'match Error /^\('
+        let matchstr = 'match Error ''\('
     endif
     let qflist = getqflist()
     call s:FlyClearNoRedraw()
     for item in qflist
         if item.lnum != 0
             if bufexists(item.bufnr)
-                if bufnr("%") != item.bufnr
-                    call buffer(item.bufnr)
-                endif
 
-                let key = getline( item.lnum )
-                if has_key( s:balloon_dict, key )
-                    let s:balloon_dict[key] = s:balloon_dict[key] . "\n" . item.text
+                let key = getbufline( item.bufnr, item.lnum )[0]
+                let escaped_key = escape( key, '^$.?*\[]' )
+                if has( 'balloon_eval' )
+                if has_key( s:fly_dict, item.bufnr )
+                    let balloon_dict = s:fly_dict[item.bufnr]
                 else
-                    let s:balloon_dict[key] = item.text
+                    let balloon_dict = {}
+                endif
+                if has_key( balloon_dict, key )
+                    if has( 'balloon_multiline' )
+                        let balloon_dict[key] = balloon_dict[key] . "\n" . item.text
+                    endif
+                else
+                    let balloon_dict[key] = item.text
+                endif
+                let s:fly_dict[item.bufnr] = balloon_dict
                 endif
 
                 if v:version >= 702
-                    call matchadd( 'Error', key )
+                    call matchadd( 'Error', '^'.escaped_key.'$' )
                 else
                     if found_count > 0
                         let matchstr = matchstr . '\|'
                     endif
-                    let matchstr = matchstr . key
+                    let matchstr = matchstr . '^' . escaped_key . '$'
                 endif
 
                 let found_count += 1
             endif
         endif
     endfor
-    call buffer(s:old_buf)
     if found_count > 0
         if v:version < 702
-            let matchstr = matchstr . '\)$/'
+            let matchstr = matchstr . '\)'''
             execute matchstr
         endif
         redraw
@@ -123,18 +134,21 @@ function! Fly()
     else
         call s:FlyDone()
     endif
+
 endfunction
 
-
 function s:FlyClearNoRedraw()
+    let qfwasopen = 0
+    if &buftype == 'quickfix'
+        let qfwasopen = 1
+        cclose
+    endif
+    "TODO neather clearmatches nor match seem to work if the quickfix is open
     if v:version >= 702
-        let matches = getmatches()
-        for item in matches
-            if has_key( s:balloon_dict, item['pattern'] )
-                call matchdelete( item['id'] )
-            endif
-        endfor
-        let s:balloon_dict = {}
+
+        call clearmatches()
+
+        let s:fly_dict = {}
     else
         match
     endif
